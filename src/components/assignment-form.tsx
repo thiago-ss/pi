@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { createAssignment, updateAssignment, deleteAssignment } from "@/lib/actions"
+import { createAssignment, updateAssignment, deleteAssignment, AssignmentData } from "@/lib/actions"
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -32,34 +32,37 @@ const formSchema = z.object({
   groupMembers: z.string().optional(),
 })
 
-export function AssignmentForm({ assignment }: { assignment?: any }) {
+type FormValues = z.infer<typeof formSchema>;
+
+export function AssignmentForm({ assignment }: { assignment?: AssignmentData }) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: assignment?.title || "",
       description: assignment?.description || "",
       dueDate: assignment?.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : "",
-      groupMembers: assignment?.groupMembers ? JSON.parse(assignment.groupMembers).join(", ") : "",
+      groupMembers: assignment?.groupMembers ? assignment.groupMembers.join(", ") : "",
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FormValues) {
     const groupMembers = values.groupMembers
       ? values.groupMembers.split(",").map((member) => member.trim())
       : []
 
     if (assignment) {
-      await updateAssignment({
-        id: assignment.id,
+      await updateAssignment(assignment.id, {
         ...values,
+        dueDate: values.dueDate,
         groupMembers,
       })
     } else {
       await createAssignment({
         ...values,
+        dueDate: values.dueDate,
         groupMembers,
       })
     }
@@ -69,10 +72,12 @@ export function AssignmentForm({ assignment }: { assignment?: any }) {
   }
 
   async function onDelete() {
-    setIsDeleting(true)
-    await deleteAssignment(assignment.id)
-    router.push("/")
-    router.refresh()
+    if (assignment) {
+      setIsDeleting(true)
+      await deleteAssignment(assignment.id)
+      router.push("/")
+      router.refresh()
+    }
   }
 
   return (

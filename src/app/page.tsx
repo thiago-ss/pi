@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { getAssignments } from "@/lib/actions"
+import { getAssignments, AssignmentData } from "@/lib/actions"
 
 export default async function Home() {
-  const assignments = await getAssignments()
+  const assignments: AssignmentData[] = await getAssignments()
 
   return (
     <main className="container mx-auto py-10">

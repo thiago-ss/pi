@@ -4,39 +4,64 @@ import { db } from "./db";
 import { assignments } from "./db/schema";
 import { eq } from "drizzle-orm";
 
-export async function getAssignments() {
-  return db.select().from(assignments).orderBy(assignments.dueDate);
+export interface AssignmentData {
+  id: number;
+  title: string;
+  description: string;
+  dueDate: string;
+  groupMembers: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export async function getAssignment(id: number) {
+export async function getAssignments(): Promise<AssignmentData[]> {
+  const results = await db.select().from(assignments).orderBy(assignments.dueDate);
+  return results.map(assignment => ({
+    ...assignment,
+    dueDate: assignment.dueDate.toISOString(),
+    groupMembers: JSON.parse(assignment.groupMembers),
+    createdAt: assignment.createdAt.toISOString(),
+    updatedAt: assignment.updatedAt.toISOString(),
+  }));
+}
+
+export async function getAssignment(id: number): Promise<AssignmentData | undefined> {
   const results = await db.select().from(assignments).where(eq(assignments.id, id));
-  return results[0];
+  if (results.length === 0) return undefined;
+  const assignment = results[0];
+  return {
+    ...assignment,
+    dueDate: assignment.dueDate.toISOString(),
+    groupMembers: JSON.parse(assignment.groupMembers),
+    createdAt: assignment.createdAt.toISOString(),
+    updatedAt: assignment.updatedAt.toISOString(),
+  };
 }
 
-export async function createAssignment(data: any) {
-  const { title, description, dueDate, groupMembers } = data;
-  return db.insert(assignments).values({
-    title,
-    description,
-    dueDate: new Date(dueDate),
-    groupMembers: JSON.stringify(groupMembers),
+export async function createAssignment(data: Omit<AssignmentData, 'id' | 'createdAt' | 'updatedAt'>) {
+  const result = await db.insert(assignments).values({
+    title: data.title,
+    description: data.description,
+    dueDate: new Date(data.dueDate),
+    groupMembers: JSON.stringify(data.groupMembers),
   }).returning();
+  return result[0];
 }
 
-export async function updateAssignment(data: any) {
-  const { id, title, description, dueDate, groupMembers } = data;
-  return db.update(assignments)
+export async function updateAssignment(id: number, data: Partial<Omit<AssignmentData, 'id' | 'createdAt' | 'updatedAt'>>) {
+  const result = await db.update(assignments)
     .set({
-      title,
-      description,
-      dueDate: new Date(dueDate),
-      groupMembers: JSON.stringify(groupMembers),
+      title: data.title,
+      description: data.description,
+      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      groupMembers: data.groupMembers ? JSON.stringify(data.groupMembers) : undefined,
       updatedAt: new Date(),
     })
     .where(eq(assignments.id, id))
     .returning();
+  return result[0];
 }
 
-export async function deleteAssignment(id: number) {
-  return db.delete(assignments).where(eq(assignments.id, id));
+export async function deleteAssignment(id: number): Promise<void> {
+  await db.delete(assignments).where(eq(assignments.id, id));
 }
