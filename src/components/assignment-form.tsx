@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createAssignment, updateAssignment, deleteAssignment, AssignmentData } from "@/lib/actions"
+import { useAssignments } from "@/lib/hooks"
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -37,6 +38,7 @@ type FormValues = z.infer<typeof formSchema>;
 export function AssignmentForm({ assignment }: { assignment?: AssignmentData }) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
+  const { mutate } = useAssignments()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -67,16 +69,16 @@ export function AssignmentForm({ assignment }: { assignment?: AssignmentData }) 
       })
     }
 
+    mutate() // Trigger a re-fetch of the assignments data
     router.push("/")
-    router.refresh()
   }
 
   async function onDelete() {
     if (assignment) {
       setIsDeleting(true)
       await deleteAssignment(assignment.id)
+      mutate()
       router.push("/")
-      router.refresh()
     }
   }
 

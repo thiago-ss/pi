@@ -3,6 +3,7 @@
 import { db } from "./db";
 import { assignments } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from 'next/cache';
 
 export interface AssignmentData {
   id: number;
@@ -25,9 +26,13 @@ export async function getAssignments(): Promise<AssignmentData[]> {
   }));
 }
 
-export async function getAssignment(id: number): Promise<AssignmentData | undefined> {
+export async function getAssignment(id: number): Promise<AssignmentData | null> {
   const results = await db.select().from(assignments).where(eq(assignments.id, id));
-  if (results.length === 0) return undefined;
+  
+  if (results.length === 0) {
+    return null;
+  }
+  
   const assignment = results[0];
   return {
     ...assignment,
@@ -45,6 +50,8 @@ export async function createAssignment(data: Omit<AssignmentData, 'id' | 'create
     dueDate: new Date(data.dueDate),
     groupMembers: JSON.stringify(data.groupMembers),
   }).returning();
+  
+  revalidatePath('/');
   return result[0];
 }
 
@@ -59,9 +66,13 @@ export async function updateAssignment(id: number, data: Partial<Omit<Assignment
     })
     .where(eq(assignments.id, id))
     .returning();
+  
+  revalidatePath('/');
+  revalidatePath(`/assignments/${id}`);
   return result[0];
 }
 
 export async function deleteAssignment(id: number): Promise<void> {
   await db.delete(assignments).where(eq(assignments.id, id));
+  revalidatePath('/');
 }
